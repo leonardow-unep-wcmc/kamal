@@ -201,8 +201,8 @@ class Kamal::Configuration
     end
   end
 
-  def logging_args
-    logging.args
+  def logging_args(default_logging_driver: "json-file")
+    logging.args(default_logging_driver: default_logging_driver)
   end
 
   def readiness_delay

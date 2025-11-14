@@ -1,6 +1,6 @@
 class Kamal::Cli::App::Boot
   attr_reader :host, :role, :version, :barrier, :sshkit
-  delegate :execute, :capture_with_info, :capture_with_pretty_json, :info, :error, :upload!, to: :sshkit
+  delegate :execute, :capture_with_info, :capture_with_pretty_json, :info, :error, :upload!, :logging_args_for, to: :sshkit
   delegate :assets?, :running_proxy?, to: :role
 
   def initialize(host, role, sshkit, version, barrier)
@@ -50,7 +50,7 @@ class Kamal::Cli::App::Boot
       execute *app.ensure_env_directory
       upload! role.secrets_io(host), role.secrets_path, mode: "0600"
 
-      execute *app.run(hostname: hostname)
+      execute *app.run(hostname: hostname, logging_args: logging_args_for(host, role.logging))
       if running_proxy?
         endpoint = capture_with_info(*app.container_id_for_version(version)).strip
         raise Kamal::Cli::BootError, "Failed to get endpoint for #{role} on #{host}, did the container boot?" if endpoint.empty?

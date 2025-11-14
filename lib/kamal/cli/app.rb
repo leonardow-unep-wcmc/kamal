@@ -134,9 +134,13 @@ class Kamal::Cli::App < Kamal::Cli::Base
       say "Get most recent version available as an image...", :magenta unless options[:version]
       using_version(version_or_latest) do |version|
         say "Launching interactive command with version #{version} via SSH from new container on #{KAMAL.primary_host}...", :magenta
-        on(KAMAL.primary_host) { execute *KAMAL.registry.login }
+        logging_args = nil
+        on(KAMAL.primary_host) do |host|
+          execute *KAMAL.registry.login
+          logging_args = logging_args_for(host, KAMAL.primary_role.logging)
+        end
         run_locally do
-          exec KAMAL.app(role: KAMAL.primary_role, host: KAMAL.primary_host).execute_in_new_container_over_ssh(cmd, env: env)
+          exec KAMAL.app(role: KAMAL.primary_role, host: KAMAL.primary_host).execute_in_new_container_over_ssh(cmd, env: env, logging_args: logging_args)
         end
       end
 
@@ -166,7 +170,8 @@ class Kamal::Cli::App < Kamal::Cli::Base
 
           roles.each do |role|
             execute *KAMAL.auditor.record("Executed cmd '#{cmd}' on app version #{version}"), verbosity: :debug
-            puts_by_host host, capture_with_info(*KAMAL.app(role: role, host: host).execute_in_new_container(cmd, env: env, detach: detach)), quiet: quiet
+            logging_args = logging_args_for(host, role.logging)
+            puts_by_host host, capture_with_info(*KAMAL.app(role: role, host: host).execute_in_new_container(cmd, env: env, detach: detach, logging_args: logging_args)), quiet: quiet
           end
         end
       end

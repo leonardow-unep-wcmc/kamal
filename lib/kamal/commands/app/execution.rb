@@ -7,7 +7,9 @@ module Kamal::Commands::App::Execution
       *command
   end
 
-  def execute_in_new_container(*command, interactive: false, detach: false, env:)
+  def execute_in_new_container(*command, interactive: false, detach: false, env:, logging_args: nil)
+    logging_args ||= role&.logging_args || config.logging_args
+
     docker :run,
       (docker_interactive_args if interactive),
       ("--detach" if detach),
@@ -15,7 +17,7 @@ module Kamal::Commands::App::Execution
       "--network", "kamal",
       *role&.env_args(host),
       *argumentize("--env", env),
-      *role.logging_args,
+      *logging_args,
       *config.volume_args,
       *role&.option_args,
       config.absolute_image,
@@ -26,7 +28,7 @@ module Kamal::Commands::App::Execution
     run_over_ssh execute_in_existing_container(*command, interactive: true, env: env), host: host
   end
 
-  def execute_in_new_container_over_ssh(*command, env:)
-    run_over_ssh execute_in_new_container(*command, interactive: true, env: env), host: host
+  def execute_in_new_container_over_ssh(*command, env:, logging_args: nil)
+    run_over_ssh execute_in_new_container(*command, interactive: true, env: env, logging_args: logging_args), host: host
   end
 end

@@ -22,12 +22,14 @@ class Kamal::Configuration::Logging
     self.class.new logging_config: logging_config.deep_merge(other.logging_config)
   end
 
-  def args
+  def args(default_logging_driver: "json-file")
     if driver.present? || options.present?
       optionize({ "log-driver" => driver }.compact) +
         argumentize("--log-opt", options)
-    else
+    elsif default_logging_driver == "json-file"
       argumentize("--log-opt", { "max-size" => "10m" })
+    else
+      []
     end
   end
 end

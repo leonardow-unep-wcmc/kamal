@@ -235,6 +235,10 @@ class ConfigurationTest < ActiveSupport::TestCase
     assert_equal [ "--log-opt", "max-size=\"10m\"" ], @config.logging_args
   end
 
+  test "logging args default skipped when docker driver not json-file" do
+    assert_equal [], @config.logging_args(default_logging_driver: "local")
+  end
+
   test "logging args with configured options" do
     config = Kamal::Configuration.new(@deploy.tap { |c| c.merge!(logging: { "options" => { "max-size" => "100m", "max-file" => 5 } }) })
     assert_equal [ "--log-opt", "max-size=\"100m\"", "--log-opt", "max-file=\"5\"" ], config.logging_args

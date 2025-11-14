@@ -23,14 +23,18 @@ class Kamal::Configuration::Proxy::Boot
     end.join(" ")
   end
 
-  def logging_args(max_size)
-    argumentize "--log-opt", "max-size=#{max_size}" if max_size.present?
+  def logging_args(max_size, default_logging_driver: "json-file")
+    if max_size.present? && default_logging_driver == "json-file"
+      argumentize "--log-opt", "max-size=#{max_size}"
+    else
+      []
+    end
   end
 
-  def default_boot_options
+  def default_boot_options(default_logging_driver: "json-file")
     [
       *(publish_args(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT, nil)),
-      *(logging_args(DEFAULT_LOG_MAX_SIZE))
+      *(logging_args(DEFAULT_LOG_MAX_SIZE, default_logging_driver: default_logging_driver))
     ]
   end
 
