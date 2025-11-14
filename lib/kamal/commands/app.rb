@@ -13,7 +13,9 @@ class Kamal::Commands::App < Kamal::Commands::Base
     @host = host
   end
 
-  def run(hostname: nil)
+  def run(hostname: nil, logging_args: nil)
+    logging_args ||= role.logging_args
+
     docker :run,
       "--detach",
       "--restart unless-stopped",
@@ -25,7 +27,7 @@ class Kamal::Commands::App < Kamal::Commands::Base
       "--env", "KAMAL_HOST=\"#{host}\"",
       "--env", "KAMAL_DESTINATION=\"#{config.destination}\"",
       *role.env_args(host),
-      *role.logging_args,
+      *logging_args,
       *config.volume_args,
       *role.asset_volume_args,
       *role.label_args,

@@ -16,6 +16,7 @@ class Kamal::Cli::Proxy < Kamal::Cli::Base
         if version && Kamal::Utils.older_version?(version, Kamal::Configuration::Proxy::Boot::MINIMUM_VERSION)
           raise "kamal-proxy version #{version} is too old, run `kamal proxy reboot` in order to update to at least #{Kamal::Configuration::Proxy::Boot::MINIMUM_VERSION}"
         end
+        ensure_proxy_boot_options(host)
         execute *KAMAL.proxy.ensure_apps_config_directory
         execute *KAMAL.proxy.start_or_run
       end
@@ -39,13 +40,6 @@ class Kamal::Cli::Proxy < Kamal::Cli::Base
 
     case subcommand
     when "set"
-      boot_options = [
-        *(proxy_boot_config.publish_args(options[:http_port], options[:https_port], options[:publish_host_ip]) if options[:publish]),
-        *(proxy_boot_config.logging_args(options[:log_max_size])),
-        *("--expose=#{options[:metrics_port]}" if options[:metrics_port]),
-        *options[:docker_options].map { |option| "--#{option}" }
-      ]
-
       image = [
         options[:registry].presence,
         options[:repository].presence || proxy_boot_config.repository_name,
@@ -59,7 +53,15 @@ class Kamal::Cli::Proxy < Kamal::Cli::Base
 
       on(KAMAL.proxy_hosts) do |host|
         execute(*KAMAL.proxy.ensure_proxy_directory)
-        if boot_options != proxy_boot_config.default_boot_options
+        logging_driver = logging_driver_for(host)
+        boot_options = [
+          *(proxy_boot_config.publish_args(options[:http_port], options[:https_port], options[:publish_host_ip]) if options[:publish]),
+          *(proxy_boot_config.logging_args(options[:log_max_size], default_logging_driver: logging_driver)),
+          *("--expose=#{options[:metrics_port]}" if options[:metrics_port]),
+          *options[:docker_options].map { |option| "--#{option}" }
+        ]
+
+        if boot_options != proxy_boot_config.default_boot_options(default_logging_driver: logging_driver)
           upload! StringIO.new(boot_options.join(" ")), proxy_boot_config.options_file
         else
           execute *KAMAL.proxy.reset_boot_options, raise_on_non_zero_exit: false
@@ -81,8 +83,23 @@ class Kamal::Cli::Proxy < Kamal::Cli::Base
           upload! StringIO.new(run_command), proxy_boot_config.run_command_file
         else
           execute *KAMAL.proxy.reset_run_command, raise_on_non_zero_exit: false
-        end
+  end
+
+  private
+    def ensure_proxy_boot_options(host)
+      proxy_boot_config = KAMAL.config.proxy_boot
+      options_file = proxy_boot_config.options_file
+      options_present = capture_with_info(:sh, "-c", "if [ -f #{options_file} ]; then echo 1; else echo 0; fi").strip == "1"
+
+      return if options_present
+
+      default_options = proxy_boot_config.default_boot_options(default_logging_driver: logging_driver_for(host)).join(" ").strip
+
+      if default_options.present?
+        upload! StringIO.new(default_options), options_file
       end
+    end
+end
     when "get"
 
       on(KAMAL.proxy_hosts) do |host|

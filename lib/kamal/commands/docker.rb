@@ -23,6 +23,10 @@ class Kamal::Commands::Docker < Kamal::Commands::Base
     docker :network, :create, :kamal
   end
 
+  def logging_driver
+    docker :info, "--format", "'{{.LoggingDriver}}'"
+  end
+
   private
     def get_docker
       shell \

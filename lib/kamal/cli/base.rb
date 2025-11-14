@@ -158,12 +158,26 @@ module Kamal::Cli
         super
       end
 
-      def pre_connect_if_required
-        if !KAMAL.connected?
-          run_hook "pre-connect"
-          KAMAL.connected = true
-        end
+    def pre_connect_if_required
+      if !KAMAL.connected?
+        run_hook "pre-connect"
+        KAMAL.connected = true
       end
+    end
+
+    def logging_driver_for(host)
+      @logging_drivers ||= {}
+
+      @logging_drivers[host] ||= begin
+        capture_with_info(*KAMAL.docker.logging_driver).strip
+      rescue SSHKit::Command::Failed
+        nil
+      end
+    end
+
+    def logging_args_for(host, logging_config = KAMAL.config.logging)
+      logging_config.args(default_logging_driver: logging_driver_for(host))
+    end
 
       def command
         @kamal_command ||= begin
